@@ -1,0 +1,24 @@
+## Interface: 11200
+## Title:|CFF33AAFF[辅助]|R自动一键换装
+## Notes: 很强大的一键换装插件，可以在设定好的特殊场景自动一键换装，包括坐骑/银色黎明/不同变身等等。 |cFFFFFF00|n 乌龟服定制版 by Sunelegy
+## Title-zhCN:|CFF33AAFF[辅助]|R自动一键换装
+## Notes-zhCN: 很强大的一键换装插件，可以在设定好的特殊场景自动一键换装，包括坐骑/银色黎明/不同变身等等。 |cFFFFFF00|n 乌龟服定制版 by Sunelegy
+## Author: Sunelegy, tian880212 (modified build)
+## Version: 1.5.4
+## OptionalDeps: TankPoints, Ace2
+## RequiredDeps: 
+## SavedVariablesPerCharacter: gOutfitter_Settings
+
+Libs\AceLibrary\AceLibrary.lua
+Libs\AceOO-2.0\AceOO-2.0.lua
+Libs\AceEvent-2.0\AceEvent-2.0.lua
+
+OutfitterStrings.lua
+OutfitterStrings_cn.lua
+
+BossTrash.lua
+Outfitter.lua
+Outfitter.xml
+QuickSwap.lua
+
+pfui-skin.lua

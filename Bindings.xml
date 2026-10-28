@@ -1,0 +1,90 @@
+<Bindings>
+	<Binding name="OUTFITTER_OUTFIT1" header="OUTFITTER_TITLE">
+		Outfitter_WearBoundOutfit(1);
+	</Binding>
+	<Binding name="OUTFITTER_OUTFIT2">
+		Outfitter_WearBoundOutfit(2);
+	</Binding>
+	<Binding name="OUTFITTER_OUTFIT3">
+		Outfitter_WearBoundOutfit(3);
+	</Binding>
+	<Binding name="OUTFITTER_OUTFIT4">
+		Outfitter_WearBoundOutfit(4);
+	</Binding>
+	<Binding name="OUTFITTER_OUTFIT5">
+		Outfitter_WearBoundOutfit(5);
+	</Binding>
+	<Binding name="OUTFITTER_OUTFIT6">
+		Outfitter_WearBoundOutfit(6);
+	</Binding>
+	<Binding name="OUTFITTER_OUTFIT7">
+		Outfitter_WearBoundOutfit(7);
+	</Binding>
+	<Binding name="OUTFITTER_OUTFIT8">
+		Outfitter_WearBoundOutfit(8);
+	</Binding>
+	<Binding name="OUTFITTER_OUTFIT9">
+		Outfitter_WearBoundOutfit(9);
+	</Binding>
+	<Binding name="OUTFITTER_OUTFIT10">
+		Outfitter_WearBoundOutfit(10);
+	</Binding>
+
+	<Binding name="OUTFITTER_QS_TOGGLE" header="OUTFITTER_QUICKSWAP">
+		OutfitterQuickSwap_Toggle();
+	</Binding>
+	<Binding name="OUTFITTER_QS_USE_HEADSLOT">
+		OutfitterQuickSwap_UseSlot("HeadSlot");
+	</Binding>
+	<Binding name="OUTFITTER_QS_USE_NECKSLOT">
+		OutfitterQuickSwap_UseSlot("NeckSlot");
+	</Binding>
+	<Binding name="OUTFITTER_QS_USE_SHOULDERSLOT">
+		OutfitterQuickSwap_UseSlot("ShoulderSlot");
+	</Binding>
+	<Binding name="OUTFITTER_QS_USE_BACKSLOT">
+		OutfitterQuickSwap_UseSlot("BackSlot");
+	</Binding>
+	<Binding name="OUTFITTER_QS_USE_CHESTSLOT">
+		OutfitterQuickSwap_UseSlot("ChestSlot");
+	</Binding>
+	<Binding name="OUTFITTER_QS_USE_WRISTSLOT">
+		OutfitterQuickSwap_UseSlot("WristSlot");
+	</Binding>
+	<Binding name="OUTFITTER_QS_USE_HANDSSLOT">
+		OutfitterQuickSwap_UseSlot("HandsSlot");
+	</Binding>
+	<Binding name="OUTFITTER_QS_USE_WAISTSLOT">
+		OutfitterQuickSwap_UseSlot("WaistSlot");
+	</Binding>
+	<Binding name="OUTFITTER_QS_USE_LEGSSLOT">
+		OutfitterQuickSwap_UseSlot("LegsSlot");
+	</Binding>
+	<Binding name="OUTFITTER_QS_USE_FEETSLOT">
+		OutfitterQuickSwap_UseSlot("FeetSlot");
+	</Binding>
+	<Binding name="OUTFITTER_QS_USE_FINGER0SLOT">
+		OutfitterQuickSwap_UseSlot("Finger0Slot");
+	</Binding>
+	<Binding name="OUTFITTER_QS_USE_FINGER1SLOT">
+		OutfitterQuickSwap_UseSlot("Finger1Slot");
+	</Binding>
+	<Binding name="OUTFITTER_QS_USE_TRINKET0SLOT">
+		OutfitterQuickSwap_UseSlot("Trinket0Slot");
+	</Binding>
+	<Binding name="OUTFITTER_QS_USE_TRINKET1SLOT">
+		OutfitterQuickSwap_UseSlot("Trinket1Slot");
+	</Binding>
+	<Binding name="OUTFITTER_QS_USE_MAINHANDSLOT">
+		OutfitterQuickSwap_UseSlot("MainHandSlot");
+	</Binding>
+	<Binding name="OUTFITTER_QS_USE_SECONDARYHANDSLOT">
+		OutfitterQuickSwap_UseSlot("SecondaryHandSlot");
+	</Binding>
+	<Binding name="OUTFITTER_QS_USE_RANGEDSLOT">
+		OutfitterQuickSwap_UseSlot("RangedSlot");
+	</Binding>
+	<Binding name="OUTFITTER_QS_USE_AMMOSLOT">
+		OutfitterQuickSwap_UseSlot("AmmoSlot");
+	</Binding>
+</Bindings>
