@@ -576,6 +576,10 @@ local gOutfitter_WeaponsNeedUpdate = false;
 local gOutfitter_LastEquipmentUpdateTime = 0;
 local Outfitter_cMinEquipmentUpdateInterval = 1.5;
 
+-- 防脱光熔断阈值：一次换装若"只脱不穿"且清空的槽位数达到此值，判定为存档/装备数据
+-- 异常（例如另一台电脑的套装存档整身都是空槽），直接拦截并报错。
+local Outfitter_cMaxBlockedUnequips = 8;
+
 local gOutfitter_CurrentOutfit = nil;
 local gOutfitter_ExpectedOutfit = nil;
 local gOutfitter_CurrentInventoryOutfit = nil;
@@ -918,6 +922,8 @@ function Outfitter_PlayerLeavingWorld()
     Outfitter_SuspendEvent(OutfitterFrame, "PLAYERBANKSLOTS_CHANGED");
 end
 
+local gOutfitter_LoginStackChecked = false;
+
 function Outfitter_PlayerEnteringWorld()
     OutfitterItemList_FlushEquippableItems();
 
@@ -936,6 +942,60 @@ function Outfitter_PlayerEnteringWorld()
 
     -- 启动更新帧，保证游泳检查等定时任务运行
     OutfitterTimer_AdjustTimer();
+
+    -- 登录后一次性校验"当前套装"与实装是否对得上（跨电脑存档漂移的兜底）
+    if not gOutfitter_LoginStackChecked then
+        AceEvent:ScheduleEvent("OutfitterLoginStackCheck", Outfitter_CheckStackAgainstInventory, 1.0);
+    end
+end
+
+-- 登录后校验：存档里的"当前套装"若是整身空槽（首登快照异常、或另一台电脑的存档），
+-- 穿上它就会把玩家脱光。这种栈与实装严重脱节，直接丢弃，不做任何自动换装。
+function Outfitter_CheckStackAgainstInventory(pAttempt)
+    if gOutfitter_LoginStackChecked then
+        return ;
+    end
+
+    pAttempt = (pAttempt or 0) + 1;
+
+    if pAttempt > 20 then
+        gOutfitter_LoginStackChecked = true;
+        return ;
+    end
+
+    if not gOutfitter_Initialized
+            or Outfitter_InventoryLooksUnloaded() then
+        AceEvent:ScheduleEvent("OutfitterLoginStackCheck", Outfitter_CheckStackAgainstInventory, 0.5, pAttempt);
+        return ;
+    end
+
+    gOutfitter_LoginStackChecked = true;
+
+    local vCompiledOutfit = Outfitter_GetCompiledOutfit();
+
+    if Outfitter_IsEmptyOutfit(vCompiledOutfit) then
+        return ;
+    end
+
+    local vPhantomSlots = 0;
+
+    for _, vInventorySlot in Outfitter_cSlotNames do
+        local vExpectedItem = vCompiledOutfit.Items[vInventorySlot];
+
+        if vExpectedItem
+                and vExpectedItem.Code == 0
+                and Outfitter_GetInventoryItemInfo(vInventorySlot) then
+            vPhantomSlots = vPhantomSlots + 1;
+        end
+    end
+
+    if vPhantomSlots >= Outfitter_cMaxBlockedUnequips then
+        OutfitterStack_Clear();
+        gOutfitter_ExpectedOutfit = Outfitter_GetCompiledOutfit();
+        gOutfitter_DisplayIsDirty = true;
+        Outfitter_UpdateCurrentOutfit();
+        Outfitter_NoteMessage(format(Outfitter_cStackResetMessage, vPhantomSlots));
+    end
 end
 
 function Outfitter_ResumeLoadScreenEvents()
@@ -3572,6 +3632,33 @@ function Outfitter_EndEquipmentUpdate(pCallerName)
     end
 end
 
+-- 统计换装表里"装上"与"清空"的槽位数量
+function Outfitter_CountEquipmentChanges(pEquipmentChangeList)
+    local vEquipCount = 0;
+    local vUnequipCount = 0;
+
+    for vChangeIndex, vEquipmentChange in pEquipmentChangeList do
+        if vEquipmentChange.ItemLocation then
+            vEquipCount = vEquipCount + 1;
+        else
+            vUnequipCount = vUnequipCount + 1;
+        end
+    end
+
+    return vEquipCount, vUnequipCount;
+end
+
+-- 当前套装栈里是否显式穿着"裸体"套装（只有它才允许一次清空整身槽位）
+function Outfitter_StackRequestsNaked()
+    for vIndex, vOutfit in gOutfitter_OutfitStack do
+        if vOutfit and vOutfit.Name == Outfitter_cNakedOutfit then
+            return true;
+        end
+    end
+
+    return false;
+end
+
 function Outfitter_UpdateEquippedItems()
     if not gOutfitter_EquippedNeedsUpdate
             and not gOutfitter_WeaponsNeedUpdate then
@@ -3643,12 +3730,34 @@ function Outfitter_UpdateEquippedItems()
 
     local vEquipmentChangeList = Outfitter_BuildEquipmentChangeList(vCompiledOutfit, vEquippableItems);
 
+    -- 防脱光熔断：跨电脑的存档与实装不一致（或物品数据尚未加载）时，"当前套装"
+    -- 可能整身都是空槽，一旦执行就会把玩家从头到脚脱光。除了显式穿着"裸体"套装，
+    -- 一律拦截"只脱不穿"的批量清空。
+    local vStrippedBlocked = false;
+
+    if vEquipmentChangeList then
+        local vEquipCount, vUnequipCount = Outfitter_CountEquipmentChanges(vEquipmentChangeList);
+
+        if vEquipCount == 0
+                and vUnequipCount >= Outfitter_cMaxBlockedUnequips
+                and not Outfitter_StackRequestsNaked() then
+            Outfitter_ErrorMessage(format(Outfitter_cBlockedStripError, vUnequipCount, Outfitter_cNakedOutfit));
+            vEquipmentChangeList = nil;
+            vStrippedBlocked = true;
+        end
+    end
+
     if vEquipmentChangeList then
         -- local    vExpectedEquippableItems = OutfitterItemList_New();
 
         Outfitter_ExecuteEquipmentChangeList(vEquipmentChangeList, Outfitter_GetEmptyBagSlotList(), vExpectedEquippableItems);
 
         -- Outfitter_DumpArray("ExpectedEquippableItems", vExpectedEquippableItems);
+    end
+
+    -- 被拦截时不要把"整身空槽"记成预期状态，否则后续会把身上所有装备都当成新物品
+    if vStrippedBlocked then
+        return ;
     end
 
     -- Update the outfit we're expecting to see on the player
@@ -4087,7 +4196,51 @@ function Outfitter_RemoveOutfitItem(pOutfit, pSlotName)
     pOutfit.Items[pSlotName] = nil;
 end
 
+-- 判断"一个已装备物品都读不到"是否只是物品数据还没加载（刚登录/刚重载时常见）：
+-- 只要背包里还有东西，就认为装备数据尚未就绪，本次快照不把槽位记成空。
+function Outfitter_InventoryLooksUnloaded()
+    for _, vSlotName in Outfitter_cSlotNames do
+        local vSlotID = GetInventorySlotInfo(vSlotName);
+
+        if vSlotID and GetInventoryItemLink("player", vSlotID) then
+            return false;
+        end
+    end
+
+    -- 弹药槽的 GetInventoryItemLink 恒为 nil，用图标兜底，避免误判
+    local vAmmoSlotID = GetInventorySlotInfo("AmmoSlot");
+
+    if vAmmoSlotID and GetInventoryItemTexture("player", vAmmoSlotID) then
+        return false;
+    end
+
+    for vBagIndex = 0, NUM_BAG_SLOTS do
+        local vNumBagSlots = GetContainerNumSlots(vBagIndex);
+
+        if vNumBagSlots and vNumBagSlots > 0 then
+            for vSlotIndex = 1, vNumBagSlots do
+                if GetContainerItemLink(vBagIndex, vSlotIndex) then
+                    return true;
+                end
+            end
+        end
+    end
+
+    return false;
+end
+
 function Outfitter_GetInventoryOutfit(pName, pOutfit)
+    -- 物品链接还没下发时整身都会读成"空"。若照常写入空槽，就会生成一个"整身空槽"
+    -- 的假套装（新机器/新角色首登时的"日常"即由此而来），之后一穿它就把玩家脱光。
+    -- 数据未就绪时保留上一次的快照，绝不写空值。
+    if Outfitter_InventoryLooksUnloaded() then
+        if pOutfit then
+            return pOutfit;
+        end
+
+        return Outfitter_NewEmptyOutfit(pName);
+    end
+
     local vOutfit;
 
     if pOutfit then
@@ -4645,6 +4798,12 @@ function Outfitter_UpdateOutfit(pOutfit)
     local name = pOutfit.Name
 
     if not vOutfitCategoryID then
+        return;
+    end
+
+    -- 装备数据还没就绪时，快照是空的，此时覆盖会把整套装备洗掉
+    if Outfitter_InventoryLooksUnloaded() then
+        Outfitter_ErrorMessage(Outfitter_cInventoryNotReadyError);
         return;
     end
 

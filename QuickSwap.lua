@@ -69,6 +69,9 @@ gOutfitterQuickSwap_Settings = {
     Vertical = false,    -- 竖向排列：栏位条按钮纵向排列（false = 横向，默认）
     PausedSlots = {}, -- 按部位暂停自动排队：[部位名]=true（Alt+右键该槽切换，TrinketMenu.SetQueue PAUSE 按菜单粒度同款）
     ShowHotKeys = false, -- 显示按键：装备按钮上显示该部位的绑定键（TrinketMenu ShowHotKeys，默认关）
+    HelpTooltip = true,  -- 详细操作提示（默认开）：悬停标题栏/栏位条空隙时，除标题外追加完整按键表
+                         -- （左键换装 / Alt+左键 入队 / Ctrl+左键 排队设置 / Alt+右键 屏蔽·暂停 /
+                         --   Shift+左键 发链接）；关掉后回到两行简版。右键菜单可切换
     HiddenItems = {},    -- 屏蔽装备（弹出列表默认隐藏的物品）：[物品名]=true，平时不在弹出列表显示；
                          -- 按住 Alt 时全部显示并染灰，弹出列表上 Alt+右键该项可恢复
     SlotsConfigured = false, -- 部位勾选是否已被用户配置过（区分"从未配置"与"主动全部取消"：
@@ -459,6 +462,7 @@ function OutfitterQuickSwap_TooltipUpdate()
 
         -- Alt+左键 加入/移出自动排队提示（当前已穿戴物品；与弹出列表 Alt+左键同语义）
         GameTooltip:AddLine("Alt+左键 加入/移出自动排队（当前已穿戴）", 0.5, 0.8, 1);
+        GameTooltip:AddLine("Alt+右键 暂停/恢复该部位排队", 0.5, 0.8, 1);
     elseif gQS_TooltipType == "BAG" and gQS_PopupSlot then
         -- 弹出列表物品：Alt+左键 增减自动排队（TrinketMenu Alt+点饰品开队列同款手感）
         local vLink = GetContainerItemLink(gQS_TooltipBag, gQS_TooltipSlot);
@@ -494,6 +498,9 @@ function OutfitterQuickSwap_TooltipUpdate()
             else
                 GameTooltip:AddLine("Alt+左键 加入自动排队", 0.5, 0.8, 1);
             end
+
+            -- Alt+右键屏蔽（GridOnClick 同款），屏蔽后该物品不再出现在本列表
+            GameTooltip:AddLine("Alt+右键 屏蔽/恢复该物品", 0.5, 0.8, 1);
         end
     end
 
@@ -504,6 +511,30 @@ function OutfitterQuickSwap_TooltipUpdate()
         gQS_TooltipType = nil;
         gQS_TooltipOwner = nil;
     end
+end
+
+-- 完整操作说明追加（面板空白 / 标题栏共用）。
+-- 1.12 客户端没有「按键说明」界面，这些组合键只能靠提示自解释；
+-- 分三段（物品图标 / 部位格子 / 面板）列全，每行控制在约 20 全角字符内避免撑宽提示框。
+-- 右键菜单「详细操作提示」关闭时整段不输出（回到标题两行简版）。
+function OutfitterQuickSwap_AddHelpLines()
+    if gOutfitterQuickSwap_Settings.HelpTooltip == false then
+        return;
+    end
+
+    GameTooltip:AddLine("自动排队：排进队列，冷却好了自动换上", 0.7, 0.7, 0.7);
+    GameTooltip:AddLine("— 物品图标 —", 1, 0.82, 0.2);
+    GameTooltip:AddLine("左键 换上该装备", 0.9, 0.9, 0.9);
+    GameTooltip:AddLine("Alt+左键 加入/移出自动排队", 0.5, 0.8, 1);
+    GameTooltip:AddLine("Ctrl+左键 排队设置(延迟/优先)", 0.5, 0.8, 1);
+    GameTooltip:AddLine("Alt+右键 屏蔽/恢复该物品", 0.5, 0.8, 1);
+    GameTooltip:AddLine("Shift+左键 发链接到聊天框", 0.75, 0.75, 0.75);
+    GameTooltip:AddLine("— 部位格子 —", 1, 0.82, 0.2);
+    GameTooltip:AddLine("右键 同类装备列表", 0.9, 0.9, 0.9);
+    GameTooltip:AddLine("Alt+右键 暂停/恢复该部位排队", 0.5, 0.8, 1);
+    GameTooltip:AddLine("— 面板空白 —", 1, 0.82, 0.2);
+    GameTooltip:AddLine("左键拖动 移动　滚轮 缩放", 0.9, 0.9, 0.9);
+    GameTooltip:AddLine("右键 菜单(锁定/排队/迷你提示)", 0.9, 0.9, 0.9);
 end
 
 -- 悬停登记 + 立即显示一次（后续走秒由事件帧 OnUpdate 驱动）
@@ -913,6 +944,11 @@ function OutfitterQuickSwap_LoadSettings()
         gOutfitterQuickSwap_Settings.ShowHotKeys = vSettings.ShowHotKeys and true or false;
     end
 
+    -- 详细操作提示——必须与 SaveSettings 成对，否则关掉后重登又回来了（老存档无此字段 → 保持默认 true）
+    if vSettings.HelpTooltip ~= nil then
+        gOutfitterQuickSwap_Settings.HelpTooltip = vSettings.HelpTooltip and true or false;
+    end
+
     if vSettings.PopupUp ~= nil then
         gOutfitterQuickSwap_Settings.PopupUp = vSettings.PopupUp and true or false;
     end
@@ -1054,6 +1090,7 @@ function OutfitterQuickSwap_SaveSettings()
         PausedSlots = gOutfitterQuickSwap_Settings.PausedSlots,
         HiddenItems = gOutfitterQuickSwap_Settings.HiddenItems,
         ShowHotKeys = gOutfitterQuickSwap_Settings.ShowHotKeys,
+        HelpTooltip = gOutfitterQuickSwap_Settings.HelpTooltip,
         X = vX,
         Y = vY,
         -- 分栏2（饰品模式第二栏）位置与缩放（与 LoadSettings 成对）
@@ -1821,6 +1858,21 @@ function OutfitterQuickSwap_MenuInit()
     end;
     UIDropDownMenu_AddButton(vInfo, 1);
 
+    -- 详细操作提示（默认开）：悬停面板空隙时的完整按键表开关
+    vInfo = {};
+    vInfo.text = "详细操作提示（悬停显示按键说明）";
+    vInfo.checked = (gOutfitterQuickSwap_Settings.HelpTooltip ~= false) and 1 or nil;
+    vInfo.isNotRadio = 1;
+    vInfo.func = function()
+        -- 当前为关闭态 → 打开；否则（true 或老存档 nil 默认开）→ 关闭
+        gOutfitterQuickSwap_Settings.HelpTooltip = (gOutfitterQuickSwap_Settings.HelpTooltip == false);
+        OutfitterQuickSwap_SaveSettings();
+        OutfitterQuickSwap_Message(gOutfitterQuickSwap_Settings.HelpTooltip
+            and "详细操作提示：开启（悬停面板空隙显示完整按键表）"
+            or "详细操作提示：关闭（悬停只显示拖动/缩放/右键两行）");
+    end;
+    UIDropDownMenu_AddButton(vInfo, 1);
+
     -- 备选框常显（TrinketMenu KeepOpen「保持列表开启」同款）
     vInfo = {};
     vInfo.text = "备选框常显（弹出后不自动收起）";
@@ -2150,7 +2202,7 @@ function OutfitterQuickSwap_SlotOnEnter(pButton)
     if GetInventoryItemTexture("player", vSlotID) then
         OutfitterQuickSwap_ShowItemTooltip("INVENTORY", pButton, nil, vSlotID);
     else
-        -- 空槽显示部位名（无定时刷新）
+        -- 空槽显示部位名（无定时刷新）+ 该格可用操作
         OutfitterQuickSwap_ClearTooltip();
         OutfitterQuickSwap_AnchorTooltip(pButton);
 
@@ -2159,6 +2211,13 @@ function OutfitterQuickSwap_SlotOnEnter(pButton)
                 GameTooltip:SetText(vSlot.Label, 1, 1, 1);
                 break;
             end
+        end
+
+        GameTooltip:AddLine("空着：右键 从背包挑同类装备", 0.8, 0.8, 0.8);
+        GameTooltip:AddLine("Alt+右键 暂停/恢复该部位排队", 0.5, 0.8, 1);
+
+        if gOutfitterQuickSwap_Settings.HelpTooltip ~= false then
+            GameTooltip:AddLine("完整按键说明：悬停面板空白处", 0.6, 0.6, 0.6);
         end
 
         GameTooltip:Show();
@@ -3615,6 +3674,49 @@ function OutfitterQuickSwap_OnEvent()
     end
 end
 
+-- 鼠标是否落在「备选框」（同类装备弹出列表）内。
+-- 1.12 的 MouseIsOver 对未 EnableMouse 的框体不可靠——弹出框刻意不开 EnableMouse
+-- （开了会吞掉物品/空白处点击），只会命中它的物品按钮。故先用 GetMouseFocus 沿父链找，
+-- 再用矩形判定兜底（鼠标停在物品之间的空隙里也算命中）。
+local function gQS_MouseInPopup()
+    local vPopup = OutfitterQuickSwapPopup;
+
+    if not vPopup or not vPopup:IsShown() then
+        return false;
+    end
+
+    -- GetMouseFocus 只有 mouse-enabled 的框体才会命中（物品按钮是），取不到就走矩形兜底
+    local vNode = GetMouseFocus and GetMouseFocus() or nil;
+    local vGuard = 0;
+
+    while vNode and vGuard < 6 do
+        if vNode == vPopup then
+            return true;
+        end
+
+        vNode = vNode:GetParent();
+        vGuard = vGuard + 1;
+    end
+
+    -- 矩形兜底：GetCursorPosition 是物理像素，框体坐标是 UI 单位（×有效缩放换算）
+    local vLeft, vRight = vPopup:GetLeft(), vPopup:GetRight();
+    local vBottom, vTop = vPopup:GetBottom(), vPopup:GetTop();
+
+    if vLeft and vRight and vBottom and vTop then
+        local vScale = vPopup:GetEffectiveScale() or 1;
+        local vX, vY = GetCursorPosition();
+
+        if vX and vY then
+            local vPad = 6;   -- 容差：贴着边缘几像素的缝隙不该判成「已离开」
+
+            return vX >= vLeft * vScale - vPad and vX <= vRight * vScale + vPad
+                and vY >= vBottom * vScale - vPad and vY <= vTop * vScale + vPad;
+        end
+    end
+
+    return false;
+end
+
 function OutfitterQuickSwap_OnUpdate(pElapsed)
     -- 缩放百分比提示显示 1s 后消失
     if gQS_ScaleTextHideAt and GetTime() > gQS_ScaleTextHideAt then
@@ -3661,9 +3763,13 @@ function OutfitterQuickSwap_OnUpdate(pElapsed)
     end
 
     -- 悬停弹出的自动收起：鼠标同时离开锚定按钮和弹出框，宽限 0.75s（TrinketMenu 手感）。
-    -- 备选框常显（PopupAlways，TrinketMenu KeepOpen 同款）时不安排收起，已排队的也取消
+    -- 备选框常显（PopupAlways，TrinketMenu KeepOpen 同款）时不安排收起，已排队的也取消。
+    -- ⚠️ 倒计时一旦开始，鼠标回到按钮/备选框上必须撤销（否则中途点图标时列表会自己消失）——
+    -- 这是原实现的漏判：只在"未安排收起"时才检查鼠标位置。
     if gQS_HideAt then
         if gOutfitterQuickSwap_Settings.PopupAlways then
+            gQS_HideAt = nil;
+        elseif gQS_MouseInPopup() or (gQS_PopupOwner and MouseIsOver(gQS_PopupOwner)) then
             gQS_HideAt = nil;
         elseif GetTime() >= gQS_HideAt then
             if OutfitterQuickSwapPopup then
@@ -3675,7 +3781,7 @@ function OutfitterQuickSwap_OnUpdate(pElapsed)
         end
     elseif gQS_PopupOwner and OutfitterQuickSwapPopup and OutfitterQuickSwapPopup:IsShown() then
         if not gOutfitterQuickSwap_Settings.PopupAlways
-            and not MouseIsOver(gQS_PopupOwner) and not MouseIsOver(OutfitterQuickSwapPopup) then
+            and not MouseIsOver(gQS_PopupOwner) and not gQS_MouseInPopup() then
             gQS_HideAt = GetTime() + 0.75;
         end
     end
@@ -3723,18 +3829,29 @@ local function OutfitterQuickSwap_Initialize()
     vFrame:SetScript("OnMouseWheel", function() OutfitterQuickSwap_OnMouseWheel(arg1); end);
 
     -- 拖动区鼠标提示：悬停在标题栏/栏位条空白处（可拖动区域）时提示操作方式。
-    -- 物品按钮自身带 OnEnter 会拦截悬停，本提示只在按钮之间的空隙生效
+    -- 物品按钮自身带 OnEnter 会拦截悬停，本提示只在按钮之间的空隙生效。
+    -- 除标题外追加完整按键表（AddHelpLines），锁定状态下也照常显示——
+    -- 锁定只是禁拖动，其余点击/组合键全部有效。
     local function BarTipOnEnter()
-        GameTooltip:SetOwner(this, "ANCHOR_TOP");
+        -- 13 行说明比较高：面板被拖到屏幕上半部时改为向下展开，避免提示顶出屏幕
+        local vAnchor = "ANCHOR_TOP";
+        local vTop = this:GetTop();
+
+        if vTop and vTop > (UIParent:GetHeight() * 0.55) then
+            vAnchor = "ANCHOR_BOTTOM";
+        end
+
+        GameTooltip:SetOwner(this, vAnchor);
         GameTooltip:ClearLines();
         if gOutfitterQuickSwap_Settings.Locked then
             GameTooltip:AddLine("快速换装（已锁定）", 1, 0.82, 0);
-            GameTooltip:AddLine("右键打开菜单可解锁拖动/缩放", 0.8, 0.8, 0.8);
+            GameTooltip:AddLine("右键菜单可解锁拖动/缩放", 0.8, 0.8, 0.8);
         else
             GameTooltip:AddLine("快速换装", 1, 1, 1);
-            GameTooltip:AddLine("按住鼠标左键拖动移动", 0.9, 0.9, 0.9);
-            GameTooltip:AddLine("滚轮缩放　右键打开菜单", 0.8, 0.8, 0.8);
+            GameTooltip:AddLine("左键拖动移动　滚轮缩放　右键菜单", 0.9, 0.9, 0.9);
         end
+
+        OutfitterQuickSwap_AddHelpLines();
         GameTooltip:Show();
     end
     local function BarTipOnLeave()
